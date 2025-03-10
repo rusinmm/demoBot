@@ -2,6 +2,8 @@ package main
 
 import (
 	"github.com/joho/godotenv"
+	"github/rusinmm/demoBot/internal/app/commands"
+	"github/rusinmm/demoBot/internal/service/product"
 	"log"
 	"os"
 
@@ -12,6 +14,7 @@ func main() {
 	godotenv.Load()
 
 	token := os.Getenv("TG_TOKEN")
+
 	bot, err := tgbotapi.NewBotAPI(token)
 	if err != nil {
 		log.Panic(err)
@@ -21,19 +24,17 @@ func main() {
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	u := tgbotapi.UpdateConfig{
+		Timeout: 60,
+	}
 
 	updates := bot.GetUpdatesChan(u)
 
+	productService := product.NewService()
+
+	commander := commands.NewCommander(bot, productService)
+
 	for update := range updates {
-		if update.Message != nil { // If we got a message
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
-		}
+		commander.HandleUpdate(update)
 	}
 }
